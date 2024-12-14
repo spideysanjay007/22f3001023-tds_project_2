@@ -1,34 +1,40 @@
+# /// script
+# requires-python = ">=3.9"
+# dependencies = [
+#   "pandas",
+#   "seaborn",
+#   "matplotlib",
+#   "numpy",
+#   "requests",
+#   "dotenv",
+# ]
+# ///
+
 import os
 import sys
 import pandas as pd
 import numpy as np
-import matplotlib
-import matplotlib.pyplot as plt
 import seaborn as sns
+import matplotlib.pyplot as plt
 from dotenv import load_dotenv
 import requests
 
 # Load environment variables
 load_dotenv()
 
-# Set OpenAI API configurations
+# OpenAI API configurations
 API_BASE = "https://aiproxy.sanand.workers.dev/openai/v1"
-API_KEY = os.environ.get("AIPROXY_TOKEN")
+API_KEY = os.getenv("AIPROXY_TOKEN")
 MODEL = "gpt-4o-mini"
 
-# Validate OpenAI API Key
 if not API_KEY:
-    print("Error: AIPROXY_TOKEN is not set. Ensure the token is loaded in the environment.")
+    print("Error: Missing AIPROXY_TOKEN. Please set it in your environment variables.")
     sys.exit(1)
 
-# Function to call the LLM
-def get_llm_response(prompt):
+# Function to fetch responses from the LLM
+def fetch_llm_response(prompt):
     try:
-        print("Sending request to LLM...")
-        headers = {
-            "Authorization": f"Bearer {API_KEY}",
-            "Content-Type": "application/json"
-        }
+        headers = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
         payload = {
             "model": MODEL,
             "messages": [
@@ -44,99 +50,41 @@ def get_llm_response(prompt):
         if "choices" in result and len(result["choices"]) > 0:
             return result["choices"][0]["message"]["content"].strip()
         else:
-            return "No analysis provided by LLM."
-    except requests.exceptions.HTTPError as e:
-        return f"HTTP error: {e}"
-    except requests.exceptions.RequestException as e:
-        return f"Request error: {e}"
+            return "No analysis provided."
     except Exception as e:
-        return f"Unexpected error: {e}"
+        return f"Error: {e}"
 
-# Validate command-line arguments
-if len(sys.argv) != 2:
-    print("Usage: python autolysis.py <dataset.csv>")
-    sys.exit(1)
+# Function to analyze the dataset
+def analyze_dataset(data):
+    summary_stats = data.describe(include="all").transpose()
+    missing_values = data.isnull().sum()
+    correlation_matrix = data.corr(numeric_only=True)
+    return summary_stats, missing_values, correlation_matrix
 
-# Load the dataset
-csv_file = sys.argv[1]
-if not os.path.exists(csv_file):
-    print(f"File {csv_file} not found.")
-    sys.exit(1)
+# Function to visualize the dataset
+def generate_visualizations(data, correlation_matrix, output_dir):
+    os.makedirs(output_dir, exist_ok=True)
 
-data = pd.read_csv(csv_file, encoding='ISO-8859-1')
-
-# Generate summary statistics
-summary_stats = data.describe(include="all").transpose()
-missing_values = data.isnull().sum()
-correlation_matrix = data.corr(numeric_only=True)
-
-# Define the output directory based on the dataset name
-dataset_name = os.path.splitext(os.path.basename(csv_file))[0]
-output_dir = os.path.join(dataset_name)
-
-# Create the output directory if it doesn't exist
-os.makedirs(output_dir, exist_ok=True)
-
-# Save correlation matrix heatmap
-plt.figure(figsize=(10, 8))
-sns.heatmap(correlation_matrix, annot=True, fmt=".2f", cmap="coolwarm", cbar=True)
-plt.title("Correlation Matrix")
-plt.savefig(os.path.join(output_dir, "correlation_matrix.png"))
-plt.close()
-
-# Generate distribution plots for numerical columns
-for column in data.select_dtypes(include=[np.number]).columns:
-    plt.figure(figsize=(8, 6))
-    sns.histplot(data[column].dropna(), kde=True, bins=30, color="blue")
-    plt.title(f"Distribution of {column}")
-    plt.xlabel(column)
-    plt.ylabel("Frequency")
-    plt.savefig(os.path.join(output_dir, f"{column}_distribution.png"))
+    # Correlation Matrix
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(correlation_matrix, annot=True, cmap="coolwarm", fmt=".2f", cbar=True)
+    plt.title("Correlation Matrix")
+    plt.savefig(os.path.join(output_dir, "correlation_matrix.png"))
     plt.close()
 
-# Generic analysis insights
-generic_analysis = (
-    "- Summary statistics provide an overview of the dataset, including mean, median, and standard deviation.\n"
-    "- Missing values are identified and counted to assess data quality.\n"
-    "- Correlation matrices reveal relationships between numerical variables.\n"
-    "- Distribution plots help identify outliers and data distribution.\n"
-    "- Outliers can be visually inspected from the distribution plots and addressed.\n"
-    "- Hierarchical patterns or clustering opportunities could be explored for grouping data points.\n"
-    "- Additional analyses can involve advanced clustering techniques such as KMeans or DBSCAN."
-)
+    # Distribution Plots
+    for column in data.select_dtypes(include=[np.number]).columns:
+        plt.figure(figsize=(8, 6))
+        sns.histplot(data[column].dropna(), kde=True, bins=30, color="blue")
+        plt.title(f"Distribution of {column}")
+        plt.xlabel(column)
+        plt.ylabel("Frequency")
+        plt.savefig(os.path.join(output_dir, f"{column}_distribution.png"))
+        plt.close()
 
-# Prepare data for LLM
-sample_data = data.head(5).to_dict(orient="records")
-llm_prompt = f"""
-You are an AI analyst. Here's the dataset summary:
-- Columns: {list(data.columns)}
-- Data types: {data.dtypes.to_dict()}
-- Missing values: {missing_values.to_dict()}
-- Sample data: {sample_data}
-
-Perform the following:
-1. Analyze the data and provide insights.
-2. Suggest any interesting trends, outliers, or relationships.
-
-Be concise and professional.
-"""
-
-# Call the LLM for analysis
-llm_analysis = get_llm_response(llm_prompt)
-
-# Provide fallback insights if LLM call fails
-if "failed" in llm_analysis.lower() or "error" in llm_analysis.lower():
-    llm_analysis = (
-        "The data contains various columns with relationships worth exploring. "
-        "Use the correlation matrix and distribution plots to identify key patterns, "
-        "trends, or anomalies in the dataset. Ensure to address missing values for better insights."
-    )
-
-# Append generic analysis insights
-llm_analysis += "\n\n" + generic_analysis
-
-# Generate README.md content
-markdown_content = f"""
+# Function to create README with analysis and visualizations
+def create_readme(data, summary_stats, missing_values, llm_analysis, output_dir):
+    markdown_content = f"""
 # Automated Analysis Report
 
 ## Dataset Overview
@@ -154,14 +102,45 @@ markdown_content = f"""
 
 ### Distributions
 """
+    for column in data.select_dtypes(include=[np.number]).columns:
+        markdown_content += f"![{column} Distribution]({column}_distribution.png)\n"
 
-# Add distribution plots to the README content
-for column in data.select_dtypes(include=[np.number]).columns:
-    markdown_content += f"![{column} Distribution]({column}_distribution.png)\n"
+    readme_path = os.path.join(output_dir, "README.md")
+    with open(readme_path, "w") as f:
+        f.write(markdown_content)
+    return readme_path
 
-# Save README.md inside the output directory
-readme_path = os.path.join(output_dir, "README.md")
-with open(readme_path, "w") as f:
-    f.write(markdown_content)
+# Main function
+def main(file_path):
+    if not os.path.exists(file_path):
+        print(f"Error: File '{file_path}' not found.")
+        sys.exit(1)
 
-print(f"Analysis complete. Outputs saved in {output_dir}/README.md and PNG files.")
+    data = pd.read_csv(file_path, encoding="ISO-8859-1")
+    summary_stats, missing_values, correlation_matrix = analyze_dataset(data)
+
+    dataset_name = os.path.splitext(os.path.basename(file_path))[0]
+    output_dir = os.path.join(dataset_name)
+
+    generate_visualizations(data, correlation_matrix, output_dir)
+
+    llm_prompt = f"""
+You are an AI analyst. Here is the dataset summary:
+- Columns: {list(data.columns)}
+- Data types: {data.dtypes.to_dict()}
+- Missing values: {missing_values.to_dict()}
+- Sample data: {data.head(5).to_dict(orient='records')}
+
+Analyze the data and provide insights. Highlight any interesting trends, outliers, or relationships.
+"""
+    llm_analysis = fetch_llm_response(llm_prompt)
+    readme_path = create_readme(data, summary_stats, missing_values, llm_analysis, output_dir)
+
+    print(f"Analysis completed. Results saved to: {output_dir}")
+    print(f"README file: {readme_path}")
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print("Usage: python autolysis.py <dataset.csv>")
+        sys.exit(1)
+    main(sys.argv[1])
