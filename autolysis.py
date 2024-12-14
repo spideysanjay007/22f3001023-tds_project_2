@@ -6,7 +6,7 @@
 #   "matplotlib",
 #   "numpy",
 #   "requests",
-#   "dotenv",
+#   "python-dotenv",
 # ]
 # ///
 
