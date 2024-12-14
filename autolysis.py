@@ -85,13 +85,19 @@ def generate_visualizations(data, correlation_matrix, output_dir):
 # Function to create README with analysis and visualizations
 def create_readme(data, summary_stats, missing_values, llm_analysis, output_dir):
     markdown_content = f"""
-# Automated Analysis Report
+# Automated Data Analysis Report
+
+## Introduction
+This is an automated analysis of the dataset, providing summary statistics, visualizations, and insights from the data.
 
 ## Dataset Overview
 - **Rows**: {data.shape[0]}
 - **Columns**: {data.shape[1]}
 - **Missing Values**:
 {missing_values.to_string()}
+
+## Summary Statistics
+{summary_stats.to_markdown()}
 
 ## Key Insights
 {llm_analysis}
