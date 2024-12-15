@@ -227,7 +227,7 @@ def question_llm(prompt, context):
                 {"role": "user", "content": full_prompt}
             ],
             "max_tokens": 10000,
-            "temperature": 0.8
+            "temperature": 0.7
         }
 
         # Send the POST request to the proxy
@@ -268,12 +268,12 @@ def main(csv_file):
     outliers = detect_outliers(df)
     print("Outliers Detected:\n", outliers)  # Debug log
 
-    # Set up the output directory
+    # Define the output directory based on the dataset name
     dataset_name = os.path.splitext(os.path.basename(csv_file))[0]
     output_dir = os.path.join(dataset_name)
-    
-    # Define the output directory based on the dataset name
 
+    # Create the output directory if it doesn't exist
+    os.makedirs(output_dir, exist_ok=True)
 
     # Generate visualizations
     heatmap_file, outliers_file, dist_plot_file = visualize_data(corr_matrix, outliers, df, output_dir)
