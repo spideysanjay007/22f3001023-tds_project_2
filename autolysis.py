@@ -63,7 +63,7 @@ def detect_outliers(df):
 
     print("Outlier detection completed.")  # Logging for debugging
     return outlier_counts
-
+# doing Advanced statistical_analysis
 def advanced_statistical_analysis(df):
     numeric_data = df.select_dtypes(include=[np.number])
     categorical_data = df.select_dtypes(include=['object'])
@@ -88,7 +88,7 @@ def advanced_statistical_analysis(df):
                     contingency_table)[1]
 
     return normality_results, t_test_results, chi_square_results
-
+#performing PCA
 def perform_pca(df):
     numeric_data = df.select_dtypes(include=[np.number]).dropna()
     pca = PCA(n_components=2)
