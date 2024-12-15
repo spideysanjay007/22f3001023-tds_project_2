@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 import argparse
 import requests
 import json
-import openai  # Ensure installation with: pip install openai
+import openai  
 
 # Function to perform data analysis, including summary statistics, missing values, and correlations
 def analyze_data(df):
@@ -185,65 +185,66 @@ def create_readme(summary_stats, missing_values, corr_matrix, outliers, output_d
     except Exception as error:
         print(f"Failed to create README.md: {error}")
         return None
-# Function to generate a detailed story using the OpenAI API via a proxy
+
 def question_llm(prompt, context):
-    print("Generating story using LLM...")  # Debug log
+    print("Generating story using LLM...")  # Debugging line
     try:
-        # Retrieve the proxy token from environment variables
+        # Get the AIPROXY_TOKEN from the environment variable
         token = os.environ["AIPROXY_TOKEN"]
 
-        # Define the API endpoint for the proxy
+        # Set the custom API base URL for the proxy
         api_url = "https://aiproxy.sanand.workers.dev/openai/v1/chat/completions"
 
-        # Prepare the full prompt
+        # Construct the full prompt
         full_prompt = f"""
-        Based on the following data analysis, create a creative and engaging story. 
-        The story should have a clear structure: an introduction, a detailed body, and a conclusion. It should feel like a cohesive narrative.
+        Based on the following data analysis, please generate a creative and engaging story. The story should include multiple paragraphs, a clear structure with an introduction, body, and conclusion, and should feel like a well-rounded narrative.
 
-        **Context:**
+        Context:
         {context}
 
-        **Prompt:**
+        Data Analysis Prompt:
         {prompt}
 
-        Guidelines for the story:
-        - Begin with a captivating introduction that sets the context.
-        - Develop the narrative with details from the data analysis, exploring its significance.
-        - Conclude with insights, lessons, or potential outcomes from the analysis.
-        - Use transitions for a smooth flow and structure the story with well-defined paragraphs.
+        The story should be elaborate and cover the following:
+        - An introduction to set the context.
+        - A detailed body that expands on the data points and explores their significance.
+        - A conclusion that wraps up the analysis and presents any potential outcomes or lessons.
+        - Use transitions to connect ideas and keep the narrative flowing smoothly.
+        - Format the story with clear paragraphs and structure.
         """
 
-        # Define the headers for the API request
+        # Prepare headers
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {token}"
         }
 
-        # Prepare the API request body
+        # Prepare the body with the model and prompt
         data = {
-            "model": "gpt-4o-mini",
+            "model": "gpt-4o-mini",  # Specific model for proxy
             "messages": [
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": full_prompt}
             ],
-            "max_tokens": 1000,
-            "temperature": 0.7
+            "max_tokens": 10000,
+            "temperature": 0.8
         }
 
-        # Send the request to the proxy API
+        # Send the POST request to the proxy
         response = requests.post(api_url, headers=headers, data=json.dumps(data))
 
-        # Handle the API response
+        # Check for successful response
         if response.status_code == 200:
+            # Extract the story from the response
             story = response.json()['choices'][0]['message']['content'].strip()
-            print("Story generation successful.")  # Debug log
+            print("Story generated.")  # Debugging line
             return story
         else:
-            print(f"API Error: {response.status_code} - {response.text}")
+            print(f"Error with request: {response.status_code} - {response.text}")
             return "Failed to generate story."
 
-    except Exception as error:
-        print(f"Error: {error}")
+    except Exception as e:
+        print(f"Error: {e}")
         return "Failed to generate story."
 
 
@@ -268,8 +269,11 @@ def main(csv_file):
     print("Outliers Detected:\n", outliers)  # Debug log
 
     # Set up the output directory
-    output_dir = "."
-    os.makedirs(output_dir, exist_ok=True)
+    dataset_name = os.path.splitext(os.path.basename(csv_file))[0]
+    output_dir = os.path.join(dataset_name)
+    
+    # Define the output directory based on the dataset name
+
 
     # Generate visualizations
     heatmap_file, outliers_file, dist_plot_file = visualize_data(corr_matrix, outliers, df, output_dir)
@@ -311,3 +315,4 @@ if __name__ == "__main__":
         print("Usage: python autolysis.py <dataset_path>")
         sys.exit(1)
     main(sys.argv[1])
+
