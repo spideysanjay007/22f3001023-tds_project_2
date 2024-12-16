@@ -23,6 +23,10 @@ import argparse
 import requests
 import json
 import openai  
+import logging
+from scipy.stats import shapiro, ttest_ind, chi2_contingency
+from sklearn.decomposition import PCA
+
 
 # Function to perform data analysis, including summary statistics, missing values, and correlations
 def analyze_data(df):
@@ -59,6 +63,38 @@ def detect_outliers(df):
 
     print("Outlier detection completed.")  # Logging for debugging
     return outlier_counts
+# doing Advanced statistical_analysis
+def advanced_statistical_analysis(df):
+    numeric_data = df.select_dtypes(include=[np.number])
+    categorical_data = df.select_dtypes(include=['object'])
+    normality_results = {col: shapiro(df[col])[1]
+                         for col in numeric_data.columns}
+
+    t_test_results = {}
+    if len(numeric_data.columns) >= 2:
+        for i in range(len(numeric_data.columns) - 1):
+            for j in range(i + 1, len(numeric_data.columns)):
+                t_test_results[f"{numeric_data.columns[i]} vs {numeric_data.columns[j]}"] = ttest_ind(
+                    numeric_data.iloc[:, i], numeric_data.iloc[:,
+                                                               j], nan_policy='omit'
+                )[1]
+    chi_square_results = {}
+    if len(categorical_data.columns) >= 2:
+        for i in range(len(categorical_data.columns) - 1):
+            for j in range(i + 1, len(categorical_data.columns)):
+                contingency_table = pd.crosstab(
+                    df[categorical_data.columns[i]], df[categorical_data.columns[j]])
+                chi_square_results[f"{categorical_data.columns[i]} vs {categorical_data.columns[j]}"] = chi2_contingency(
+                    contingency_table)[1]
+
+    return normality_results, t_test_results, chi_square_results
+#performing PCA
+def perform_pca(df):
+    numeric_data = df.select_dtypes(include=[np.number]).dropna()
+    pca = PCA(n_components=2)
+    pca_result = pca.fit_transform(numeric_data)
+    return pca.explained_variance_ratio_
+
 
 
 # Function to generate visual outputs, including a heatmap, outlier bar plot, and distribution plot
@@ -268,6 +304,15 @@ def main(csv_file):
     # Detect outliers
     outliers = detect_outliers(df)
     print("Outliers Detected:\n", outliers)  # Debug log
+    
+    #Normality
+    normality_results, t_test_results, chi_square_results = advanced_statistical_analysis(df)
+    print("Normality Results:\n", normality_results)  # Debug log
+    
+    #PCA
+    pca_variance = perform_pca(df)
+    print("PCA Variance:\n", pca_variance)  # Debug log
+
 
     # Define the output directory based on the dataset name
     dataset_name = os.path.splitext(os.path.basename(csv_file))[0]
