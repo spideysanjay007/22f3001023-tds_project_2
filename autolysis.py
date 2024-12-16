@@ -63,6 +63,7 @@ def detect_outliers(df):
 
     print("Outlier detection completed.")  # Logging for debugging
     return outlier_counts
+    
 # doing Advanced statistical_analysis
 def advanced_statistical_analysis(df):
     numeric_data = df.select_dtypes(include=[np.number])
@@ -88,13 +89,13 @@ def advanced_statistical_analysis(df):
                     contingency_table)[1]
 
     return normality_results, t_test_results, chi_square_results
+    
 #performing PCA
 def perform_pca(df):
     numeric_data = df.select_dtypes(include=[np.number]).dropna()
     pca = PCA(n_components=2)
     pca_result = pca.fit_transform(numeric_data)
     return pca.explained_variance_ratio_
-
 
 
 # Function to generate visual outputs, including a heatmap, outlier bar plot, and distribution plot
