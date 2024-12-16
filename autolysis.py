@@ -263,7 +263,7 @@ def question_llm(prompt, context):
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": full_prompt}
             ],
-            "max_tokens": 10000,
+            "max_tokens": 1000,
             "temperature": 0.7
         }
 
